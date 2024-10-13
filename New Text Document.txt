@@ -1,0 +1,9 @@
+To get started to use this project there a few steps, firstly once the file is downloaded and upzipped there must be some installations via pip
+
+1 use the command "pip install transformers, flask, langdetect, nltk.corpus, datasets, numpy
+
+2 Once this is completed ensure that all files are named correctly and all connections are working (CSS and HTML for example)
+
+3 Ensure that all models are within the correct folders (if the folder is not empty its probably right)
+
+4 Run the program on App.Py for the website,  Training.Py for the fine tuning or AI.Py for the inferance test to see if translations are working.
