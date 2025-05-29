@@ -7,42 +7,47 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <h1>Welcome to Matt's Translator</h1>
-  <h2>Would you like to translate or define?</h2>
+  <div class="patterns pt1"></div>
+  <div class="container">
+    <div class="logo-container">
+      <h1 id="page-logo">Welcome to Matt's Translator</h1>
+    </div>
 
-  <button id="startSpeechRecognition">🎤</button>
-  <textarea id="textInput" placeholder="Please enter text"></textarea>
+    <h2>Would you like to translate or define?</h2>
 
-  <div>
-    <select id="languageDropdown2">
-      <option value="default">Pick Starting Language</option>
-      <option value="English">English</option>
-      <option value="Spanish">Spanish</option>
-      <option value="French">French</option>
-      <option value="German">German</option>
-      <option value="Italian">Italian</option>
-      <option value="Romanian">Romanian</option>
-    </select>
+    <button id="startSpeechRecognition">🎤</button>
+    <textarea id="textInput" placeholder="Please enter text"></textarea>
 
-    <select id="languageDropdown">
-      <option value="default">Pick Target Language</option>
-      <option value="English">English</option>
-      <option value="Spanish">Spanish</option>
-      <option value="French">French</option>
-      <option value="German">German</option>
-      <option value="Italian">Italian</option>
-      <option value="Romanian">Romanian</option>
-    </select>
+    <div>
+      <select id="languageDropdown2">
+        <option value="default">Pick Starting Language</option>
+        <option value="English">English</option>
+        <option value="Spanish">Spanish</option>
+        <option value="French">French</option>
+        <option value="German">German</option>
+        <option value="Italian">Italian</option>
+        <option value="Romanian">Romanian</option>
+      </select>
+
+      <select id="languageDropdown">
+        <option value="default">Pick Target Language</option>
+        <option value="English">English</option>
+        <option value="Spanish">Spanish</option>
+        <option value="French">French</option>
+        <option value="German">German</option>
+        <option value="Italian">Italian</option>
+        <option value="Romanian">Romanian</option>
+      </select>
+    </div>
+
+    <button id="translateButton">Translate</button>
+    <button id="defineButton">Define</button>
+
+    <button id="startTextToSpeech">🔊</button>
+    <textarea id="feedback" placeholder="Result" readonly></textarea>
   </div>
 
-  <button id="translateButton">Translate</button>
-  <button id="defineButton">Define</button>
-
-  <button id="startTextToSpeech">🔊</button>
-  <textarea id="feedback" placeholder="Result" readonly></textarea>
-
   <script>
-    // Language code map for LibreTranslate API
     const langMap = {
       English: "en",
       Spanish: "es",
@@ -52,18 +57,14 @@
       Romanian: "ro"
     };
 
-    // Translate button handler
+    // Translate
     document.getElementById("translateButton").addEventListener("click", () => {
       const text = document.getElementById("textInput").value.trim();
       const sourceLang = document.getElementById("languageDropdown2").value;
       const targetLang = document.getElementById("languageDropdown").value;
 
-      if (!text) {
-        alert("Please enter text to translate.");
-        return;
-      }
-      if (sourceLang === "default" || targetLang === "default") {
-        alert("Please select both starting and target languages.");
+      if (!text || sourceLang === "default" || targetLang === "default") {
+        alert("Please enter text and select both languages.");
         return;
       }
 
@@ -74,29 +75,33 @@
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json"
+          Accept: "application/json",
         },
         body: JSON.stringify({
           q: text,
           source: source,
           target: target,
-          format: "text"
+          format: "text",
+        }),
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Network response was not OK");
+          }
+          return response.json();
         })
-      })
-      .then(response => {
-        if (!response.ok) throw new Error("Failed to translate.");
-        return response.json();
-      })
-      .then(data => {
-        document.getElementById("feedback").value = data.translatedText || "No translation returned.";
-      })
-      .catch(error => {
-        console.error("Translation error:", error);
-        document.getElementById("feedback").value = "Translation failed.";
-      });
+        .then((data) => {
+          document.getElementById("feedback").value =
+            data.translatedText || "No translated text returned.";
+        })
+        .catch((err) => {
+          console.error("Translation error:", err);
+          document.getElementById("feedback").value =
+            "Translation failed or service unavailable.";
+        });
     });
 
-    // Define button handler
+    // Define (dictionary API)
     document.getElementById("defineButton").addEventListener("click", () => {
       const word = document.getElementById("textInput").value.trim();
       if (!word) {
@@ -104,48 +109,55 @@
         return;
       }
 
-      // Using DictionaryAPI.dev (only English definitions)
+      // Using Free Dictionary API
       fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`)
-        .then(response => {
-          if (!response.ok) throw new Error("No definitions found.");
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Word not found");
+          }
           return response.json();
         })
-        .then(data => {
-          // Collect definitions from all meanings
-          const definitions = data[0].meanings.flatMap(meaning =>
-            meaning.definitions.map(def => `- (${meaning.partOfSpeech}) ${def.definition}`)
-          );
-          document.getElementById("feedback").value = definitions.join("\n\n") || "No definitions found.";
+        .then((data) => {
+          // Extract the first definition of the first meaning
+          const meanings = data[0]?.meanings;
+          if (!meanings || meanings.length === 0) {
+            document.getElementById("feedback").value = "No definitions found.";
+            return;
+          }
+          const definitions = meanings[0]?.definitions;
+          if (!definitions || definitions.length === 0) {
+            document.getElementById("feedback").value = "No definitions found.";
+            return;
+          }
+          const definition = definitions[0].definition;
+          document.getElementById("feedback").value = definition;
         })
-        .catch(error => {
+        .catch((error) => {
           console.error("Definition error:", error);
-          document.getElementById("feedback").value = "No definitions found.";
+          document.getElementById("feedback").value =
+            "Definition not found or service unavailable.";
         });
     });
 
-    // Speech Recognition button handler
+    // Speech Recognition
     document.getElementById("startSpeechRecognition").addEventListener("click", () => {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        alert("Speech recognition is not supported in this browser.");
-        return;
-      }
-      const recognition = new SpeechRecognition();
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
       recognition.lang = "en-US";
-      recognition.onresult = event => {
+      recognition.onresult = (event) => {
         document.getElementById("textInput").value = event.results[0][0].transcript;
       };
-      recognition.onerror = event => {
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error", event.error);
         alert("Speech recognition error: " + event.error);
       };
       recognition.start();
     });
 
-    // Text to Speech button handler
+    // Text to Speech
     document.getElementById("startTextToSpeech").addEventListener("click", () => {
-      const text = document.getElementById("feedback").value.trim();
+      const text = document.getElementById("feedback").value;
       if (!text) {
-        alert("Nothing to read.");
+        alert("Nothing to speak.");
         return;
       }
       const utterance = new SpeechSynthesisUtterance(text);
