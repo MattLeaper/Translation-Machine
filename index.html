@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Matt's Translator</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -42,6 +42,7 @@
   <textarea id="feedback" placeholder="Result" readonly></textarea>
 
   <script>
+    // Language code map for LibreTranslate API
     const langMap = {
       English: "en",
       Spanish: "es",
@@ -51,13 +52,18 @@
       Romanian: "ro"
     };
 
+    // Translate button handler
     document.getElementById("translateButton").addEventListener("click", () => {
-      const text = document.getElementById("textInput").value;
+      const text = document.getElementById("textInput").value.trim();
       const sourceLang = document.getElementById("languageDropdown2").value;
       const targetLang = document.getElementById("languageDropdown").value;
 
-      if (!text || sourceLang === "default" || targetLang === "default") {
-        alert("Please enter text and select both languages.");
+      if (!text) {
+        alert("Please enter text to translate.");
+        return;
+      }
+      if (sourceLang === "default" || targetLang === "default") {
+        alert("Please select both starting and target languages.");
         return;
       }
 
@@ -77,9 +83,12 @@
           format: "text"
         })
       })
-      .then(res => res.json())
+      .then(response => {
+        if (!response.ok) throw new Error("Failed to translate.");
+        return response.json();
+      })
       .then(data => {
-        document.getElementById("feedback").value = data.translatedText || "No translated text returned.";
+        document.getElementById("feedback").value = data.translatedText || "No translation returned.";
       })
       .catch(error => {
         console.error("Translation error:", error);
@@ -87,6 +96,7 @@
       });
     });
 
+    // Define button handler
     document.getElementById("defineButton").addEventListener("click", () => {
       const word = document.getElementById("textInput").value.trim();
       if (!word) {
@@ -94,14 +104,18 @@
         return;
       }
 
-      fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
-        .then(res => {
-          if (!res.ok) throw new Error("Definition not found.");
-          return res.json();
+      // Using DictionaryAPI.dev (only English definitions)
+      fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`)
+        .then(response => {
+          if (!response.ok) throw new Error("No definitions found.");
+          return response.json();
         })
         .then(data => {
-          const defs = data[0].meanings.flatMap(m => m.definitions.map(d => d.definition));
-          document.getElementById("feedback").value = defs.join("\n\n") || "No definitions found.";
+          // Collect definitions from all meanings
+          const definitions = data[0].meanings.flatMap(meaning =>
+            meaning.definitions.map(def => `- (${meaning.partOfSpeech}) ${def.definition}`)
+          );
+          document.getElementById("feedback").value = definitions.join("\n\n") || "No definitions found.";
         })
         .catch(error => {
           console.error("Definition error:", error);
@@ -109,17 +123,31 @@
         });
     });
 
+    // Speech Recognition button handler
     document.getElementById("startSpeechRecognition").addEventListener("click", () => {
-      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Speech recognition is not supported in this browser.");
+        return;
+      }
+      const recognition = new SpeechRecognition();
       recognition.lang = "en-US";
       recognition.onresult = event => {
         document.getElementById("textInput").value = event.results[0][0].transcript;
       };
+      recognition.onerror = event => {
+        alert("Speech recognition error: " + event.error);
+      };
       recognition.start();
     });
 
+    // Text to Speech button handler
     document.getElementById("startTextToSpeech").addEventListener("click", () => {
-      const text = document.getElementById("feedback").value;
+      const text = document.getElementById("feedback").value.trim();
+      if (!text) {
+        alert("Nothing to read.");
+        return;
+      }
       const utterance = new SpeechSynthesisUtterance(text);
       speechSynthesis.speak(utterance);
     });
