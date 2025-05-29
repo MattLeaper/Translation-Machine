@@ -5,19 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Matt's Translator</title>
   <link rel="stylesheet" href="styles.css" />
-
 </head>
 <body>
-
   <h1>Welcome to Matt's Translator</h1>
   <h2>Would you like to translate or define?</h2>
 
-  <div>
-    <button id="startSpeechRecognition">
-      🎤 Speak
-    </button>
-    <textarea id="textInput" placeholder="Please enter text..."></textarea>
-  </div>
+  <button id="startSpeechRecognition">🎤</button>
+  <textarea id="textInput" placeholder="Please enter text"></textarea>
 
   <div>
     <select id="languageDropdown2">
@@ -41,15 +35,11 @@
     </select>
   </div>
 
-  <div>
-    <button id="translateButton">Translate</button>
-    <button id="defineButton">Define</button>
-  </div>
+  <button id="translateButton">Translate</button>
+  <button id="defineButton">Define</button>
 
-  <div>
-    <button id="startTextToSpeech">🔊 Read Result</button>
-    <textarea id="feedback" placeholder="Result will appear here..." readonly></textarea>
-  </div>
+  <button id="startTextToSpeech">🔊</button>
+  <textarea id="feedback" placeholder="Result" readonly></textarea>
 
   <script>
     const langMap = {
@@ -61,9 +51,8 @@
       Romanian: "ro"
     };
 
-    // Translate Button
     document.getElementById("translateButton").addEventListener("click", () => {
-      const text = document.getElementById("textInput").value.trim();
+      const text = document.getElementById("textInput").value;
       const sourceLang = document.getElementById("languageDropdown2").value;
       const targetLang = document.getElementById("languageDropdown").value;
 
@@ -71,6 +60,9 @@
         alert("Please enter text and select both languages.");
         return;
       }
+
+      const source = langMap[sourceLang];
+      const target = langMap[targetLang];
 
       fetch("https://libretranslate.de/translate", {
         method: "POST",
@@ -80,22 +72,21 @@
         },
         body: JSON.stringify({
           q: text,
-          source: langMap[sourceLang],
-          target: langMap[targetLang],
+          source: source,
+          target: target,
           format: "text"
         })
       })
       .then(res => res.json())
       .then(data => {
-        document.getElementById("feedback").value = data.translatedText || "No translation returned.";
+        document.getElementById("feedback").value = data.translatedText || "No translated text returned.";
       })
       .catch(error => {
-        console.error("Translation Error:", error);
+        console.error("Translation error:", error);
         document.getElementById("feedback").value = "Translation failed.";
       });
     });
 
-    // Define Button
     document.getElementById("defineButton").addEventListener("click", () => {
       const word = document.getElementById("textInput").value.trim();
       if (!word) {
@@ -104,26 +95,20 @@
       }
 
       fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
-        .then(response => {
-          if (!response.ok) throw new Error("Word not found");
-          return response.json();
+        .then(res => {
+          if (!res.ok) throw new Error("Definition not found.");
+          return res.json();
         })
         .then(data => {
-          const definitions = data[0].meanings
-            .map(meaning =>
-              meaning.definitions.map(def => `• ${def.definition}`).join("\n")
-            )
-            .join("\n\n");
-
-          document.getElementById("feedback").value = definitions || "No definitions found.";
+          const defs = data[0].meanings.flatMap(m => m.definitions.map(d => d.definition));
+          document.getElementById("feedback").value = defs.join("\n\n") || "No definitions found.";
         })
         .catch(error => {
-          console.error("Definition Error:", error);
-          document.getElementById("feedback").value = "Definition not found.";
+          console.error("Definition error:", error);
+          document.getElementById("feedback").value = "No definitions found.";
         });
     });
 
-    // Speech Recognition
     document.getElementById("startSpeechRecognition").addEventListener("click", () => {
       const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
       recognition.lang = "en-US";
@@ -133,14 +118,11 @@
       recognition.start();
     });
 
-    // Text-to-Speech
     document.getElementById("startTextToSpeech").addEventListener("click", () => {
       const text = document.getElementById("feedback").value;
-      if (!text) return;
       const utterance = new SpeechSynthesisUtterance(text);
       speechSynthesis.speak(utterance);
     });
   </script>
-
 </body>
 </html>
