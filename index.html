@@ -21,85 +21,105 @@
             <button id="translateButton">Translate</button>
             <button id="defineButton">Define</button>
         </div>
-        <div>
-            <select id="languageDropdown2">
-                <option value="default">Please Pick Your Starting Language</option>
-                <option value="English">English</option>
-                <option value="Spanish">Spanish</option>
-                <option value="French">French</option>
-                <option value="German">German</option>
-                <option value="Italian">Italian</option>
-                <option value="Romanian">Romanian</option>
-            </select>
-            <select id="languageDropdown">
-                <option value="default">Please Pick Your Target Language</option>
-                <option value="English">English</option>
-                <option value="Spanish">Spanish</option>
-                <option value="French">French</option>
-                <option value="German">German</option>
-                <option value="Italian">Italian</option>
-                <option value="Romanian">Romanian</option>
-            </select>
-        </div>
-        <div>
-            <button id="startTextToSpeech"><img src="{{ url_for('static', filename='high, volume icon icon.png') }}"></button>
-            <textarea id="feedback" placeholder="Result" readonly></textarea>
-        </div>
-    </div>
-    <script>
-        document.getElementById("translateButton").addEventListener("click", function() {
-            const textToTranslate = document.getElementById("textInput").value;
-            const origin_language = document.getElementById("languageDropdown2").value.toLowerCase().slice(0, 2);
-            const target_language = document.getElementById("languageDropdown").value.toLowerCase().slice(0, 2);
-        
-            fetch('https://libretranslate.de/translate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    q: textToTranslate,
-                    source: origin_language === 'de' ? 'de' : origin_language,
-                    target: target_language,
-                    format: "text"
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById("feedback").value = data.translatedText;
-            });
+  <div>
+    <select id="languageDropdown2">
+      <option value="default">Pick Starting Language</option>
+      <option value="English">English</option>
+      <option value="Spanish">Spanish</option>
+      <option value="French">French</option>
+      <option value="German">German</option>
+      <option value="Italian">Italian</option>
+      <option value="Romanian">Romanian</option>
+    </select>
+
+    <select id="languageDropdown">
+      <option value="default">Pick Target Language</option>
+      <option value="English">English</option>
+      <option value="Spanish">Spanish</option>
+      <option value="French">French</option>
+      <option value="German">German</option>
+      <option value="Italian">Italian</option>
+      <option value="Romanian">Romanian</option>
+    </select>
+  </div>
+
+  <button class="icon-button" id="startTextToSpeech">
+    <img src="assets/volume-icon.png" alt="Speaker" class="icon"/>
+  </button>
+  <textarea id="feedback" placeholder="Result" readonly></textarea>
+
+  <script>
+    const langMap = {
+      English: "en",
+      Spanish: "es",
+      French: "fr",
+      German: "de",
+      Italian: "it",
+      Romanian: "ro"
+    };
+
+    document.getElementById("translateButton").addEventListener("click", () => {
+      const text = document.getElementById("textInput").value;
+      const sourceLang = document.getElementById("languageDropdown2").value;
+      const targetLang = document.getElementById("languageDropdown").value;
+
+      if (!text || sourceLang === "default" || targetLang === "default") {
+        alert("Please enter text and select both languages.");
+        return;
+      }
+
+      fetch("https://libretranslate.de/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          q: text,
+          source: langMap[sourceLang],
+          target: langMap[targetLang],
+          format: "text"
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById("feedback").value = data.translatedText;
+      })
+      .catch(err => {
+        console.error(err);
+        document.getElementById("feedback").value = "Translation failed.";
+      });
+    });
+
+    document.getElementById("defineButton").addEventListener("click", () => {
+      const word = document.getElementById("textInput").value.trim();
+      if (!word) {
+        alert("Please enter a word to define.");
+        return;
+      }
+
+      fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
+        .then(res => res.json())
+        .then(data => {
+          const defs = data[0]?.meanings?.[0]?.definitions?.map(d => d.definition);
+          document.getElementById("feedback").value = defs.length ? defs.join("\n") : "No definitions found.";
+        })
+        .catch(() => {
+          document.getElementById("feedback").value = "Definition failed.";
         });
+    });
 
-        
-        document.getElementById("defineButton").addEventListener("click", function() {
-            const word = document.getElementById("textInput").value;
-            fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
-                .then(response => response.json())
-                .then(data => {
-                    const defs = data[0]?.meanings?.[0]?.definitions?.map(def => def.definition) || [];
-                    document.getElementById("feedback").value = defs.length ? defs.join('\n') : "No definitions found.";
-                });
-        });
+    document.getElementById("startSpeechRecognition").addEventListener("click", () => {
+      const recognition = new webkitSpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.onresult = event => {
+        document.getElementById("textInput").value = event.results[0][0].transcript;
+      };
+      recognition.start();
+    });
 
-
-        // Function to handle speech recognition
-        function startSpeechRecognition() {
-            var recognition = new webkitSpeechRecognition(); // Initialize speech recognition
-            recognition.lang = 'en-US'; // Set language to English (you can change this)
-            recognition.onresult = function(event) {
-                var speechToText = event.results[0][0].transcript; // Get the recognized speech
-                document.getElementById("textInput").value = speechToText; // Populate the text input
-            };
-            recognition.start(); // Start speech recognition
-        }
-
-        // Function to handle text-to-speech
-        function startTextToSpeech() {
-            var textToSpeak = document.getElementById("feedback").value;
-            var utterance = new SpeechSynthesisUtterance(textToSpeak);
-            speechSynthesis.speak(utterance);
-        }
-
-        document.getElementById("startSpeechRecognition").addEventListener("click", startSpeechRecognition); // Add event listener to the speech button
-        document.getElementById("startTextToSpeech").addEventListener("click", startTextToSpeech); // Add event listener to the TTS button
-    </script>
+    document.getElementById("startTextToSpeech").addEventListener("click", () => {
+      const text = document.getElementById("feedback").value;
+      const utterance = new SpeechSynthesisUtterance(text);
+      speechSynthesis.speak(utterance);
+    });
+  </script>
 </body>
 </html>
