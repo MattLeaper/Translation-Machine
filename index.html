@@ -68,43 +68,46 @@
         return;
       }
 
+      const langMap = {
+        English: "en",
+        Spanish: "es",
+        French: "fr",
+        German: "de",
+        Italian: "it",
+        Romanian: "ro"
+      };
+
+      const source = langMap[sourceLang];
+      const target = langMap[targetLang];
+
       fetch("https://libretranslate.de/translate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
         body: JSON.stringify({
           q: text,
-          source: langMap[sourceLang],
-          target: langMap[targetLang],
+          source: source,
+          target: target,
           format: "text"
         })
       })
-      .then(res => res.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("Network response was not OK");
+        }
+        return response.json();
+      })
       .then(data => {
-        document.getElementById("feedback").value = data.translatedText;
+        document.getElementById("feedback").value = data.translatedText || "No translated text returned.";
       })
       .catch(err => {
-        console.error(err);
-        document.getElementById("feedback").value = "Translation failed.";
+        console.error("Translation error:", err);
+        document.getElementById("feedback").value = "Translation failed or service unavailable.";
       });
     });
 
-    document.getElementById("defineButton").addEventListener("click", () => {
-      const word = document.getElementById("textInput").value.trim();
-      if (!word) {
-        alert("Please enter a word to define.");
-        return;
-      }
-
-      fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
-        .then(res => res.json())
-        .then(data => {
-          const defs = data[0]?.meanings?.[0]?.definitions?.map(d => d.definition);
-          document.getElementById("feedback").value = defs.length ? defs.join("\n") : "No definitions found.";
-        })
-        .catch(() => {
-          document.getElementById("feedback").value = "Definition failed.";
-        });
-    });
 
     document.getElementById("startSpeechRecognition").addEventListener("click", () => {
       const recognition = new webkitSpeechRecognition();
