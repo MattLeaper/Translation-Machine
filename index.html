@@ -1,26 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MattsTranslator</title>
-    <link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Matt's Translator</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      max-width: 700px;
+      margin: auto;
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+      margin-top: 10px;
+      padding: 10px;
+    }
+    select, button {
+      margin-top: 10px;
+      padding: 10px;
+    }
+    .icon {
+      height: 24px;
+      vertical-align: middle;
+    }
+  </style>
 </head>
 <body>
-    <div>
-        <div class="patterns pt1"></div>
-        <div class="logo-container">
-            <h1 id="page-logo">Welcome to Matt's Translator</h1>
-        </div>
-        <h2>Would you like to translate or define?</h2>
-        <div>
-            <button id="startSpeechRecognition"><img src="{{ url_for('static', filename='mic icon icon.png') }}"></button>
-            <textarea id="textInput" placeholder="Please Enter Text"></textarea>
-        </div>
-        <div>      
-            <button id="translateButton">Translate</button>
-            <button id="defineButton">Define</button>
-        </div>
+
+  <h1>Welcome to Matt's Translator</h1>
+  <h2>Would you like to translate or define?</h2>
+
+  <div>
+    <button id="startSpeechRecognition">
+      🎤 Speak
+    </button>
+    <textarea id="textInput" placeholder="Please enter text..."></textarea>
+  </div>
+
   <div>
     <select id="languageDropdown2">
       <option value="default">Pick Starting Language</option>
@@ -43,10 +62,15 @@
     </select>
   </div>
 
-  <button class="icon-button" id="startTextToSpeech">
-    <img src="assets/volume-icon.png" alt="Speaker" class="icon"/>
-  </button>
-  <textarea id="feedback" placeholder="Result" readonly></textarea>
+  <div>
+    <button id="translateButton">Translate</button>
+    <button id="defineButton">Define</button>
+  </div>
+
+  <div>
+    <button id="startTextToSpeech">🔊 Read Result</button>
+    <textarea id="feedback" placeholder="Result will appear here..." readonly></textarea>
+  </div>
 
   <script>
     const langMap = {
@@ -58,8 +82,9 @@
       Romanian: "ro"
     };
 
+    // Translate Button
     document.getElementById("translateButton").addEventListener("click", () => {
-      const text = document.getElementById("textInput").value;
+      const text = document.getElementById("textInput").value.trim();
       const sourceLang = document.getElementById("languageDropdown2").value;
       const targetLang = document.getElementById("languageDropdown").value;
 
@@ -67,18 +92,6 @@
         alert("Please enter text and select both languages.");
         return;
       }
-
-      const langMap = {
-        English: "en",
-        Spanish: "es",
-        French: "fr",
-        German: "de",
-        Italian: "it",
-        Romanian: "ro"
-      };
-
-      const source = langMap[sourceLang];
-      const target = langMap[targetLang];
 
       fetch("https://libretranslate.de/translate", {
         method: "POST",
@@ -88,29 +101,52 @@
         },
         body: JSON.stringify({
           q: text,
-          source: source,
-          target: target,
+          source: langMap[sourceLang],
+          target: langMap[targetLang],
           format: "text"
         })
       })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error("Network response was not OK");
-        }
-        return response.json();
-      })
+      .then(res => res.json())
       .then(data => {
-        document.getElementById("feedback").value = data.translatedText || "No translated text returned.";
+        document.getElementById("feedback").value = data.translatedText || "No translation returned.";
       })
-      .catch(err => {
-        console.error("Translation error:", err);
-        document.getElementById("feedback").value = "Translation failed or service unavailable.";
+      .catch(error => {
+        console.error("Translation Error:", error);
+        document.getElementById("feedback").value = "Translation failed.";
       });
     });
 
+    // Define Button
+    document.getElementById("defineButton").addEventListener("click", () => {
+      const word = document.getElementById("textInput").value.trim();
+      if (!word) {
+        alert("Please enter a word to define.");
+        return;
+      }
 
+      fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
+        .then(response => {
+          if (!response.ok) throw new Error("Word not found");
+          return response.json();
+        })
+        .then(data => {
+          const definitions = data[0].meanings
+            .map(meaning =>
+              meaning.definitions.map(def => `• ${def.definition}`).join("\n")
+            )
+            .join("\n\n");
+
+          document.getElementById("feedback").value = definitions || "No definitions found.";
+        })
+        .catch(error => {
+          console.error("Definition Error:", error);
+          document.getElementById("feedback").value = "Definition not found.";
+        });
+    });
+
+    // Speech Recognition
     document.getElementById("startSpeechRecognition").addEventListener("click", () => {
-      const recognition = new webkitSpeechRecognition();
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
       recognition.lang = "en-US";
       recognition.onresult = event => {
         document.getElementById("textInput").value = event.results[0][0].transcript;
@@ -118,11 +154,14 @@
       recognition.start();
     });
 
+    // Text-to-Speech
     document.getElementById("startTextToSpeech").addEventListener("click", () => {
       const text = document.getElementById("feedback").value;
+      if (!text) return;
       const utterance = new SpeechSynthesisUtterance(text);
       speechSynthesis.speak(utterance);
     });
   </script>
+
 </body>
 </html>
