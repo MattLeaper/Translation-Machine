@@ -48,42 +48,37 @@
     </div>
     <script>
         document.getElementById("translateButton").addEventListener("click", function() {
-            var textToTranslate = document.getElementById("textInput").value;
-            var origin_language = document.getElementById("languageDropdown2").value;
-            var target_language = document.getElementById("languageDropdown").value;
-            fetch('/translate', {
+            const textToTranslate = document.getElementById("textInput").value;
+            const origin_language = document.getElementById("languageDropdown2").value.toLowerCase().slice(0, 2);
+            const target_language = document.getElementById("languageDropdown").value.toLowerCase().slice(0, 2);
+        
+            fetch('https://libretranslate.de/translate', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: 'text=' + encodeURIComponent(textToTranslate) + '&target_language=' + target_language + '&origin_language=' + origin_language
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    q: textToTranslate,
+                    source: origin_language === 'de' ? 'de' : origin_language,
+                    target: target_language,
+                    format: "text"
+                })
             })
             .then(response => response.json())
             .then(data => {
-                document.getElementById("feedback").value = data.translated_text;
-                document.getElementById("language").value = data.languagedetected;
+                document.getElementById("feedback").value = data.translatedText;
             });
         });
 
+        
         document.getElementById("defineButton").addEventListener("click", function() {
-            var textToDefine = document.getElementById("textInput").value;
-            fetch('/define', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: 'text=' + encodeURIComponent(textToDefine)
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Check if definitions are returned
-                if (data.definitions.length > 0) {
-                    document.getElementById("feedback").value = data.definitions.join('\n');
-                } else {
-                    document.getElementById("feedback").value = "No definitions found.";
-                }
-            });
+            const word = document.getElementById("textInput").value;
+            fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
+                .then(response => response.json())
+                .then(data => {
+                    const defs = data[0]?.meanings?.[0]?.definitions?.map(def => def.definition) || [];
+                    document.getElementById("feedback").value = defs.length ? defs.join('\n') : "No definitions found.";
+                });
         });
+
 
         // Function to handle speech recognition
         function startSpeechRecognition() {
