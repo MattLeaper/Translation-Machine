@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MattsTranslator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div>
+        <div class="patterns pt1"></div>
+        <div class="logo-container">
+            <h1 id="page-logo">Welcome to Matt's Translator</h1>
+        </div>
+        <h2>Would you like to translate or define?</h2>
+        <div>
+            <button id="startSpeechRecognition"><img src="{{ url_for('static', filename='mic icon icon.png') }}"></button>
+            <textarea id="textInput" placeholder="Please Enter Text"></textarea>
+        </div>
+        <div>      
+            <button id="translateButton">Translate</button>
+            <button id="defineButton">Define</button>
+        </div>
+        <div>
+            <select id="languageDropdown2">
+                <option value="default">Please Pick Your Starting Language</option>
+                <option value="English">English</option>
+                <option value="Spanish">Spanish</option>
+                <option value="French">French</option>
+                <option value="German">German</option>
+                <option value="Italian">Italian</option>
+                <option value="Romanian">Romanian</option>
+            </select>
+            <select id="languageDropdown">
+                <option value="default">Please Pick Your Target Language</option>
+                <option value="English">English</option>
+                <option value="Spanish">Spanish</option>
+                <option value="French">French</option>
+                <option value="German">German</option>
+                <option value="Italian">Italian</option>
+                <option value="Romanian">Romanian</option>
+            </select>
+        </div>
+        <div>
+            <button id="startTextToSpeech"><img src="{{ url_for('static', filename='high, volume icon icon.png') }}"></button>
+            <textarea id="feedback" placeholder="Result" readonly></textarea>
+        </div>
+    </div>
+    <script>
+        document.getElementById("translateButton").addEventListener("click", function() {
+            var textToTranslate = document.getElementById("textInput").value;
+            var origin_language = document.getElementById("languageDropdown2").value;
+            var target_language = document.getElementById("languageDropdown").value;
+            fetch('/translate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'text=' + encodeURIComponent(textToTranslate) + '&target_language=' + target_language + '&origin_language=' + origin_language
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("feedback").value = data.translated_text;
+                document.getElementById("language").value = data.languagedetected;
+            });
+        });
+
+        document.getElementById("defineButton").addEventListener("click", function() {
+            var textToDefine = document.getElementById("textInput").value;
+            fetch('/define', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'text=' + encodeURIComponent(textToDefine)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Check if definitions are returned
+                if (data.definitions.length > 0) {
+                    document.getElementById("feedback").value = data.definitions.join('\n');
+                } else {
+                    document.getElementById("feedback").value = "No definitions found.";
+                }
+            });
+        });
+
+        // Function to handle speech recognition
+        function startSpeechRecognition() {
+            var recognition = new webkitSpeechRecognition(); // Initialize speech recognition
+            recognition.lang = 'en-US'; // Set language to English (you can change this)
+            recognition.onresult = function(event) {
+                var speechToText = event.results[0][0].transcript; // Get the recognized speech
+                document.getElementById("textInput").value = speechToText; // Populate the text input
+            };
+            recognition.start(); // Start speech recognition
+        }
+
+        // Function to handle text-to-speech
+        function startTextToSpeech() {
+            var textToSpeak = document.getElementById("feedback").value;
+            var utterance = new SpeechSynthesisUtterance(textToSpeak);
+            speechSynthesis.speak(utterance);
+        }
+
+        document.getElementById("startSpeechRecognition").addEventListener("click", startSpeechRecognition); // Add event listener to the speech button
+        document.getElementById("startTextToSpeech").addEventListener("click", startTextToSpeech); // Add event listener to the TTS button
+    </script>
+</body>
+</html>
