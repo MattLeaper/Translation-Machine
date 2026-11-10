@@ -3,166 +3,54 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Translate text between English, Spanish, French, German, Italian and Romanian, entirely in your browser." />
   <title>Matt's Translator</title>
+  <script>
+    (function () {
+      var t; try { t = localStorage.getItem('theme'); } catch (e) {}
+      if (!t) t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="patterns pt1"></div>
-  <div class="container">
-    <div class="logo-container">
-      <h1 id="page-logo">Welcome to Matt's Translator</h1>
+  <div class="wrap">
+    <header class="top">
+      <h1>Matt's Translator</h1>
+      <button id="themeToggle" type="button"></button>
+    </header>
+    <p class="lede">Translates in your browser, so your text never leaves your device. The first translation for each language downloads a small model (about 100 MB), then it's cached.</p>
+
+    <div class="panels">
+      <section class="panel" aria-label="Original text">
+        <select id="src" aria-label="Translate from"></select>
+        <textarea id="input" placeholder="Type or paste text" maxlength="2000"></textarea>
+        <div class="tools">
+          <button id="mic" type="button" class="icon" aria-label="Speak your text">🎤</button>
+          <button id="clear" type="button" class="icon" aria-label="Clear text">✕</button>
+        </div>
+      </section>
+
+      <button id="swap" type="button" class="icon swap" aria-label="Swap languages">⇄</button>
+
+      <section class="panel" aria-label="Translation">
+        <select id="tgt" aria-label="Translate to"></select>
+        <textarea id="output" placeholder="Translation appears here" readonly></textarea>
+        <div class="tools">
+          <button id="speak" type="button" class="icon" aria-label="Read aloud">🔊</button>
+          <button id="copy" type="button" class="icon" aria-label="Copy translation">⧉</button>
+        </div>
+      </section>
     </div>
 
-    <h2>Would you like to translate or define?</h2>
-
-    <button id="startSpeechRecognition">🎤</button>
-    <textarea id="textInput" placeholder="Please enter text"></textarea>
-
-    <div>
-      <select id="languageDropdown2">
-        <option value="default">Pick Starting Language</option>
-        <option value="English">English</option>
-        <option value="Spanish">Spanish</option>
-        <option value="French">French</option>
-        <option value="German">German</option>
-        <option value="Italian">Italian</option>
-        <option value="Romanian">Romanian</option>
-      </select>
-
-      <select id="languageDropdown">
-        <option value="default">Pick Target Language</option>
-        <option value="English">English</option>
-        <option value="Spanish">Spanish</option>
-        <option value="French">French</option>
-        <option value="German">German</option>
-        <option value="Italian">Italian</option>
-        <option value="Romanian">Romanian</option>
-      </select>
+    <div class="actions">
+      <button id="translate" type="button" class="primary">Translate</button>
+      <button id="define" type="button" class="secondary">Define a word</button>
     </div>
-
-    <button id="translateButton">Translate</button>
-    <button id="defineButton">Define</button>
-
-    <button id="startTextToSpeech">🔊</button>
-    <textarea id="feedback" placeholder="Result" readonly></textarea>
+    <progress id="bar" max="100" value="0" hidden></progress>
+    <p id="status" role="status" aria-live="polite"></p>
   </div>
-
-  <script>
-    const langMap = {
-      English: "en",
-      Spanish: "es",
-      French: "fr",
-      German: "de",
-      Italian: "it",
-      Romanian: "ro"
-    };
-
-    // Translate
-    document.getElementById("translateButton").addEventListener("click", () => {
-      const text = document.getElementById("textInput").value.trim();
-      const sourceLang = document.getElementById("languageDropdown2").value;
-      const targetLang = document.getElementById("languageDropdown").value;
-
-      if (!text || sourceLang === "default" || targetLang === "default") {
-        alert("Please enter text and select both languages.");
-        return;
-      }
-
-      const source = langMap[sourceLang];
-      const target = langMap[targetLang];
-
-      fetch("https://libretranslate.de/translate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          q: text,
-          source: source,
-          target: target,
-          format: "text",
-        }),
-      })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("Network response was not OK");
-          }
-          return response.json();
-        })
-        .then((data) => {
-          document.getElementById("feedback").value =
-            data.translatedText || "No translated text returned.";
-        })
-        .catch((err) => {
-          console.error("Translation error:", err);
-          document.getElementById("feedback").value =
-            "Translation failed or service unavailable.";
-        });
-    });
-
-    // Define (dictionary API)
-    document.getElementById("defineButton").addEventListener("click", () => {
-      const word = document.getElementById("textInput").value.trim();
-      if (!word) {
-        alert("Please enter a word to define.");
-        return;
-      }
-
-      // Using Free Dictionary API
-      fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`)
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("Word not found");
-          }
-          return response.json();
-        })
-        .then((data) => {
-          // Extract the first definition of the first meaning
-          const meanings = data[0]?.meanings;
-          if (!meanings || meanings.length === 0) {
-            document.getElementById("feedback").value = "No definitions found.";
-            return;
-          }
-          const definitions = meanings[0]?.definitions;
-          if (!definitions || definitions.length === 0) {
-            document.getElementById("feedback").value = "No definitions found.";
-            return;
-          }
-          const definition = definitions[0].definition;
-          document.getElementById("feedback").value = definition;
-        })
-        .catch((error) => {
-          console.error("Definition error:", error);
-          document.getElementById("feedback").value =
-            "Definition not found or service unavailable.";
-        });
-    });
-
-    // Speech Recognition
-    document.getElementById("startSpeechRecognition").addEventListener("click", () => {
-      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-      recognition.lang = "en-US";
-      recognition.onresult = (event) => {
-        document.getElementById("textInput").value = event.results[0][0].transcript;
-      };
-      recognition.onerror = (event) => {
-        console.error("Speech recognition error", event.error);
-        alert("Speech recognition error: " + event.error);
-      };
-      recognition.start();
-    });
-
-    // Text to Speech
-    document.getElementById("startTextToSpeech").addEventListener("click", () => {
-      const text = document.getElementById("feedback").value;
-      if (!text) {
-        alert("Nothing to speak.");
-        return;
-      }
-      const utterance = new SpeechSynthesisUtterance(text);
-      speechSynthesis.speak(utterance);
-    });
-  </script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>
